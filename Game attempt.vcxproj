@@ -146,6 +146,7 @@
     <ClInclude Include="BMPIN.h" />
     <ClInclude Include="BMPIO.h" />
     <ClInclude Include="BMPOUT.h" />
+    <ClInclude Include="Chunk.h" />
     <ClInclude Include="Game Attempt 1.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="Game attempt.h" />
@@ -165,6 +166,7 @@
     <ClCompile Include="BMPIN.cpp" />
     <ClCompile Include="BMPIO.cpp" />
     <ClCompile Include="BMPOUT.cpp" />
+    <ClCompile Include="Chunk.cpp" />
     <ClCompile Include="Game Attempt 1.cpp" />
     <ClCompile Include="GuiUtilities.cpp" />
     <ClCompile Include="KeyTracker.cpp" />

@@ -110,49 +110,112 @@ int DrawRect(int X1, int Y1, int X2, int Y2, unsigned int color, bufferMem* buff
 }
 
 int drawLine(struct bufferMem* buffer, int firstX, int firstY, int secondX, int secondY, int thickness) {
-        float slope = (float)(secondY - firstY) / (float)(secondX - firstX);
+    int temp = 0;
 
-        if (slope > 1) {
-            int A = 2 * (secondX - firstX);
-            int B = A - (2 * (secondY - firstY));
-            int P = A - (secondY - firstY);
-            int range = secondY - firstY;
-            int x = firstX;
-            int y = firstY;
-            for (int i = 0; i < range; i++) {
-                if (P < 0) {
-                    setPixelColor(x, y + i, 0, buffer, (unsigned int*)buffer->background);
-                    P = P + A;
-                }
-                else if (P >= 0) {
-                    x += 1;
-                    setPixelColor(x, y + i, 0, buffer, (unsigned int*)buffer->background);
-                    P = P + B;
-                }
-            }
-        }
-        else if (slope >= 0) {
-            int A = 2 * (secondY - firstY);
-            int B = A - (2 * (secondX - firstX));
-            int P = A - (secondX - firstX);
-            int range = secondX - firstX;
-            int x = firstX;
-            int y = firstY;
-            for (int i = 0; i < range; i++) {
-                if (P < 0) {
-                    setPixelColor(x + i, y, 0, buffer, (unsigned int*)buffer->background);
-                    P = P + A;
-                }
-                else if (P >= 0) {
-                    y += 1;
-                    setPixelColor(x + i, y, 0, buffer, (unsigned int*)buffer->background);
-                    P = P + B;
-                }
-            }
-        }
+    float slope = (float)(secondY - firstY) / (float)(secondX - firstX);
+    int xStart = firstX;
+    int yStart = firstY;
 
-        return 0;
+    if ((firstX > secondX)) {
+        temp = firstX;
+        firstX = secondX;
+        secondX = temp;
+        xStart = firstX;
+        yStart = secondY;
     }
+    if (firstY > secondY) {
+        temp = firstY;
+        firstY = secondY;
+        secondY = temp;
+    }
+    
+    else {
+        if (firstY > secondY) {
+            temp = firstY;
+            firstY = secondY;
+            secondY = temp;
+        }
+    }
+    if (slope > 1) {
+        int A = 2 * (secondX - firstX);
+        int B = A - (2 * (secondY - firstY));
+        int P = A - (secondY - firstY);
+        int range = secondY - firstY;
+        int x = xStart;
+        int y = yStart;
+        for (int i = 0; i < range; i++) {
+            if (P < 0) {
+                setPixelColor(x, y + i, 0x00FFFFFF, buffer, (unsigned int*)buffer->background);
+                P = P + A;
+            }
+            else if (P >= 0) {
+                x += 1;
+                setPixelColor(x, y + i, 0x00FFFFFF, buffer, (unsigned int*)buffer->background);
+                P = P + B;
+            }
+        }
+    }
+    else if (slope >= 0) {
+        int A = 2 * (secondY - firstY);
+        int B = A - (2 * (secondX - firstX));
+        int P = A - (secondX - firstX);
+        int range = secondX - firstX;
+        int x = xStart;
+        int y = yStart;
+        for (int i = 0; i < range; i++) {
+            if (P < 0) {
+                setPixelColor(x + i, y, 0x00FFFFFF, buffer, (unsigned int*)buffer->background);
+                P = P + A;
+            }
+            else if (P >= 0) {
+                y += 1;
+                setPixelColor(x + i, y, 0x00FFFFFF, buffer, (unsigned int*)buffer->background);
+                P = P + B;
+            }
+        }
+    }
+    else if (slope >= -1) {
+        int A = 2 * (secondY - firstY);
+        int B = A - (2 * (secondX - firstX));
+        int P = A - (secondX - firstX);
+        int range = secondX - firstX;
+        int x = xStart;
+        int y = yStart;
+        for (int i = 0; i < range; i++) {
+            if (P < 0) {
+                setPixelColor(x + i, y, 0x00FFFFFF, buffer, (unsigned int*)buffer->background);
+                P = P + A;
+            }
+            else if (P >= 0) {
+                y -= 1;
+                setPixelColor(x + i, y, 0x00FFFFFF, buffer, (unsigned int*)buffer->background);
+                P = P + B;
+            }
+        }
+    }
+    else {
+        int A = 2 * (secondX - firstX);
+        int B = A - (2 * (secondY - firstY));
+        int P = A - (secondY - firstY);
+        int range = secondY - firstY;
+        int x = xStart;
+        int y = yStart;
+        for (int i = 0; i < range; i++) {
+            if (P < 0) {
+                setPixelColor(x, y - i, 0x00FFFFFF, buffer, (unsigned int*)buffer->background);
+                P = P + A;
+            }
+            else if (P >= 0) {
+                x += 1;
+                setPixelColor(x, y - i, 0x00FFFFFF, buffer, (unsigned int*)buffer->background);
+                P = P + B;
+            }
+        }
+    
+    }
+
+    return 0;
+}
 
 int setWindowColor(unsigned int color, struct bufferMem* buffer, unsigned int* buffer_memory) {
         unsigned int* pixel = buffer_memory;
@@ -256,7 +319,84 @@ void printNumber(int numberToPrint, int xStart, int yStart, struct bufferMem* bu
         delete image;
     }//end for
 }
+void printFloat(float numberToPrint, int trunc, int xStart, int yStart, struct bufferMem* buffer, unsigned int* buffer_memory) {
+    //the offset of each consecutive letter so letters dont overlap
+    int xOffset = xStart;
+    int yOffset = yStart;
 
+    char fileName[] = { "Text/ .BMP" };
+    int digits = log10(numberToPrint + 1) + 1;
+    int exp = pow(10, trunc);
+    int decimalToPrint = (numberToPrint+1) * exp - ((int)(numberToPrint)*exp);
+    for (int currChar = 0; currChar < digits; currChar++) {
+
+        exp = pow(10, digits - 1 - currChar);
+        fileName[5] = static_cast<char>(numberToPrint / exp + 48);
+        numberToPrint = ((int)numberToPrint % exp);
+        //all BMP files for letters will be *.BMP where * is a single letter.
+
+        BMPIN* image = new BMPIN();
+        image->Import(fileName);
+        unsigned int currPixel;
+        for (int y = 0; y < image->getHeight(); y++) {
+            for (int x = 0; x < image->getWidth(); x++) {
+
+                currPixel = image->getColorHex(x, y);
+                if (currPixel != 0x00FFFFFF) {
+                    //setPixelColor(x + xOffset, y + yOffset, currPixel, buffer, (unsigned int*)buffer->background);
+                    *(unsigned int*)((unsigned int*)buffer->background + x + xOffset + (y + yOffset) * buffer->width) = currPixel;
+                }
+            }//end for
+
+        }//end for
+        xOffset += 24;
+        delete image;
+    }//end for
+    BMPIN* image = new BMPIN();
+    image->Import("Text/..bmp");
+    unsigned int currPixel;
+    for (int y = 0; y < image->getHeight(); y++) {
+        for (int x = 0; x < image->getWidth(); x++) {
+
+            currPixel = image->getColorHex(x, y);
+            if (currPixel != 0x00FFFFFF) {
+                //setPixelColor(x + xOffset, y + yOffset, currPixel, buffer, (unsigned int*)buffer->background);
+                *(unsigned int*)((unsigned int*)buffer->background + x + xOffset + (y + yOffset) * buffer->width) = currPixel;
+            }
+        }//end for
+
+    }//end for
+    xOffset += 24;
+    delete image;
+
+    digits = log10(decimalToPrint/10 + 1) + 1;
+    exp = pow(10, digits);
+    decimalToPrint = ((int)decimalToPrint % exp);
+    for (int currChar = 0; currChar < digits; currChar++) {
+
+        int exp = pow(10, digits - 1 - currChar);
+        fileName[5] = static_cast<char>(decimalToPrint / exp + 48);
+        decimalToPrint = ((int)decimalToPrint % exp);
+        //all BMP files for letters will be *.BMP where * is a single letter.
+
+        BMPIN* image = new BMPIN();
+        image->Import(fileName);
+        unsigned int currPixel;
+        for (int y = 0; y < image->getHeight(); y++) {
+            for (int x = 0; x < image->getWidth(); x++) {
+
+                currPixel = image->getColorHex(x, y);
+                if (currPixel != 0x00FFFFFF) {
+                    //setPixelColor(x + xOffset, y + yOffset, currPixel, buffer, (unsigned int*)buffer->background);
+                    *(unsigned int*)((unsigned int*)buffer->background + x + xOffset + (y + yOffset) * buffer->width) = currPixel;
+                }
+            }//end for
+
+        }//end for
+        xOffset += 24;
+        delete image;
+    }//end for
+}
 unsigned int compareColors(unsigned int colorTop, unsigned int colorBottom){
         if ((colorTop >> 24) == 0xFF) {
             return colorBottom;
@@ -365,4 +505,89 @@ void getFiles(std::string path, std::string fileExtention, textLine** fileLinked
 
 char capitalize(char text) {
     return static_cast<char>(std::toupper(static_cast<unsigned char>(text)));
+}
+
+
+void blur(bufferMem* buffer, unsigned int* buffer_memory)
+{
+    void* tempBuffervoid = malloc(buffer->width * buffer->height * 4);
+    unsigned int* tempbuffer;
+    tempbuffer = (unsigned int*)tempBuffervoid;
+    setWindowColor(0xFF000000, buffer, tempbuffer);
+    unsigned int newcolor;
+    unsigned int* pixel1;
+    unsigned int* pixel2;
+    unsigned int* pixel3;
+    unsigned int* pixel4;
+    unsigned int* pixel5;
+    unsigned int* pixel6;
+    unsigned int* pixel7;
+    unsigned int* pixel8;
+    unsigned int* pixel9;
+    for (int y = 0; y < buffer->height; y++) {
+        for (int x = 0; x < buffer->width; x++) {
+            if ((x == 0) || (x == buffer->width) || (y == buffer->height - 1) || (y == 0)) {
+                pixel1 = buffer_memory + x + y * buffer->width;
+                pixel2 = pixel1;
+                pixel3 = pixel1;
+                pixel4 = pixel1;
+                pixel5 = pixel1;
+                pixel6 = pixel1;
+                pixel7 = pixel1;
+                pixel8 = pixel1;
+                pixel9 = pixel1;
+            }
+            else {
+                pixel1 = buffer_memory + x + y * buffer->width;
+                pixel2 = pixel1 + 1 + buffer->width;
+                pixel3 = pixel1 + buffer->width;
+                pixel4 = pixel1 - 1 + buffer->width;
+                pixel5 = pixel1 + 1;
+                pixel6 = pixel1 - 1;
+                pixel7 = pixel1 + 1 - buffer->width;
+                pixel8 = pixel1 - buffer->width;
+                pixel9 = pixel1 - 1 - buffer->width;
+            }
+
+            newcolor = 0;
+            newcolor = newcolor + ((((*pixel1 & 0x000000FF) + (*pixel2 & 0x000000FF) + (*pixel3 & 0x000000FF) + (*pixel4 & 0x000000FF) + (*pixel5 & 0x000000FF) + (*pixel6 & 0x000000FF) + (*pixel7 & 0x000000FF) + (*pixel8 & 0x000000FF) + (*pixel9 & 0x000000FF)) / 9) & 0x000000FF);
+            newcolor = newcolor + ((((*pixel1 & 0x0000FF00) + (*pixel2 & 0x0000FF00) + (*pixel3 & 0x0000FF00) + (*pixel4 & 0x0000FF00) + (*pixel5 & 0x0000FF00) + (*pixel6 & 0x0000FF00) + (*pixel7 & 0x0000FF00) + (*pixel8 & 0x0000FF00) + (*pixel9 & 0x0000FF00)) / 9) & 0x0000FF00);
+            newcolor = newcolor + ((((*pixel1 & 0x00FF0000) + (*pixel2 & 0x00FF0000) + (*pixel3 & 0x00FF0000) + (*pixel4 & 0x00FF0000) + (*pixel5 & 0x00FF0000) + (*pixel6 & 0x00FF0000) + (*pixel7 & 0x00FF0000) + (*pixel8 & 0x00FF0000) + (*pixel9 & 0x00FF0000)) / 9) & 0x00FF0000);
+
+            *tempbuffer = newcolor;
+            tempbuffer++;
+        }
+    }
+
+    tempbuffer = (unsigned int*)tempBuffervoid;
+    for (int i = 0; i < buffer->width * buffer->height; i++) {
+
+        *(buffer_memory + i) = *(tempbuffer + i);
+    }
+
+
+}
+
+void multiplyByProjMat(vertex& newVector, vertex& Vector, mat4x4& matrix) {
+    newVector.x = (matrix.m[0][0]*Vector.x + matrix.m[1][0]*Vector.y + matrix.m[2][0]*Vector.z + matrix.m[3][0]);
+    newVector.y = (matrix.m[0][1]*Vector.x + matrix.m[1][1]*Vector.y + matrix.m[2][1]*Vector.z + matrix.m[3][1]);
+    newVector.z = (matrix.m[0][2]*Vector.x + matrix.m[1][2]*Vector.y + matrix.m[2][2]*Vector.z + matrix.m[3][2]);
+    float w = (matrix.m[0][3] * Vector.x + matrix.m[1][3] * Vector.y + matrix.m[2][3] * Vector.z + matrix.m[3][3]);
+
+    if (w != 0) {
+        newVector.x /= w;
+        newVector.y /= w;
+        newVector.z /= w;
+    
+    }
+}
+
+void multiplyByRotMat(vertex& newVector, vertex& Vector, mat3x3& matrix) {
+    newVector.x = (matrix.m[0][0] * Vector.x + matrix.m[1][0] * Vector.y + matrix.m[2][0] * Vector.z);
+    newVector.y = (matrix.m[0][1] * Vector.x + matrix.m[1][1] * Vector.y + matrix.m[2][1] * Vector.z);
+    newVector.z = (matrix.m[0][2] * Vector.x + matrix.m[1][2] * Vector.y + matrix.m[2][2] * Vector.z);
+}
+
+void CrossProduct(vertex& newVector, vertex& Vector1, vertex& Vector2){
+    newVector = { (Vector1.y * Vector2.z) - (Vector1.z * Vector2.y),(Vector1.x * Vector2.z) - (Vector1.z * Vector2.x),(Vector1.x * Vector2.y) - (Vector1.y * Vector2.x) };
 }

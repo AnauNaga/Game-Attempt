@@ -37,6 +37,7 @@ struct Globals {
     int cursorY = 0;
 };
 
+
 LRESULT CALLBACK window_callback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd);

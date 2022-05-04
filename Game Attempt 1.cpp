@@ -15,6 +15,7 @@
 #include <fileSystem>
 #include <fstream>
 #include <sstream>
+#include <vector>
 
 //local includes
 #include "KeyTracker.h"
@@ -22,6 +23,7 @@
 #include "BMPOUT.h"
 #include "BMPIN.h"
 #include "GuiUtilites.h"
+#include "Chunk.h"
 
 enum ButtonList {
     NewFile,
@@ -36,6 +38,9 @@ struct Pos {
     float x = 400;
     float y = 400;
 };
+
+
+
 
 bufferMem* buffer = new bufferMem{};
 Globals* Global = new Globals{};
@@ -63,7 +68,8 @@ LRESULT CALLBACK window_callback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
             buffer->width = rect.right - rect.left;
             buffer->height = rect.bottom - rect.top;
 
-
+            buffer->widthHalf = buffer->width / 2;
+            buffer->heightHalf = buffer->height / 2;
             int buffer_size = buffer->width * buffer->height * sizeof(unsigned int);
 
             if (buffer->memory) VirtualFree(buffer->memory, 0, MEM_RELEASE);
@@ -83,7 +89,10 @@ LRESULT CALLBACK window_callback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
             if (buffer->interactable) VirtualFree(buffer->interactable, 0, MEM_RELEASE);
             buffer->interactable = VirtualAlloc(0, buffer_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
-
+            //set the unsigned int of each memory location;
+            buffer->UIMemory = static_cast<unsigned int*>(buffer->memory);
+            buffer->UIBackground = static_cast<unsigned int*>(buffer->background);
+            buffer->UIInteractable = static_cast<unsigned int*>(buffer->interactable);
             setWindowColor(0x00000AA, buffer, (unsigned int*)buffer->background);
             setWindowColor(0xFF000000, buffer, (unsigned int*)buffer->interactable);
             printText((char*)"Cosmic Database", 200, 960, buffer, (unsigned int*)buffer->background);
@@ -125,6 +134,48 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
 int mainMenu(HWND window, HDC hdc,Globals* Global, struct bufferMem* buffer) {
 
 
+    shape cube;
+    cube.tris = { 
+            //front
+            {0.0f,0.0f,0.0f ,0.0f,1.0f,0.0f, 1.0f,1.0f,0.0f},  {0.0f,0.0f,0.0f, 1.0f,1.0f,0.0f, 1.0f,0.0f,0.0f },
+            //right
+            {1.0f,0.0f,0.0f, 1.0f,1.0f,0.0f, 1.0f,1.0f,1.0f},  {1.0f,0.0f,0.0f, 1.0f,1.0f,1.0f, 1.0f,0.0f,1.0f },
+            //left
+            {0.0f,0.0f,1.0f, 0.0f,1.0f,1.0f, 0.0f,1.0f,0.0f},  {0.0f,0.0f,1.0f, 0.0f,1.0f,0.0f, 0.0f,0.0f,0.0f },
+            //back
+            {1.0f,0.0f,1.0f, 1.0f,1.0f,1.0f, 0.0f,1.0f,1.0f},  {1.0f,0.0f,1.0f, 0.0f,1.0f,1.0f, 0.0f,0.0f,1.0f },
+            //up
+            {0.0f,1.0f,0.0f, 0.0f,1.0f,1.0f, 1.0f,1.0f,1.0f},  {0.0f,1.0f,0.0f, 1.0f,1.0f,1.0f, 1.0f,1.0f,0.0f },
+            //bottom
+            {0.0f,0.0f,1.0f, 0.0f,0.0f,0.0f,  1.0f,0.0f,0.0f},  {0.0f,0.0f,1.0f, 1.0f,0.0f,0.0f, 1.0f,0.0f,1.0f },
+            
+    };
+
+    mat4x4 matrixproj{0};
+    mat3x3 matrixRot{0};
+
+    // projection matrix
+    float fNear = 0.1f;
+    float fFar = 100000000.0f;
+    float fFov = 90.045f;
+    float fAspectRatio = (float)buffer->height / (float)buffer->width;
+    float fFovRad = buffer->height / tanf((fFov * 3.141592) / 360.0f);
+
+    //initialize projection matrix
+    matrixproj.m[0][0] = fFovRad; //fAspectRatio*
+    matrixproj.m[1][1] = fFovRad;
+    matrixproj.m[2][2] = fFar / (fFar - fNear);
+    matrixproj.m[3][2] = (-fFar * fNear) / (fFar - fNear);
+    matrixproj.m[2][3] = 1.0f;
+    matrixproj.m[3][3] = 0.0f;
+
+    //initialize Rotation matrix
+    matrixRot.m[0][0] = 1.0f;
+    matrixRot.m[1][1] = 1.0f;
+    matrixRot.m[2][2] = 1.0f;
+    float RotateX = 0;
+    float RotateY = 0;
+
     //tools used to keep track of time
     timeInfo time;
     QueryPerformanceCounter(&time.frame_begin_time);
@@ -138,17 +189,6 @@ int mainMenu(HWND window, HDC hdc,Globals* Global, struct bufferMem* buffer) {
     char charsToPrint[2];
 
 
-    //preload mars and Planet images
-    BMPIN* Mars = new BMPIN();
-    Mars->Import("text/Mars.bmp", 0x00000000);
-    BMPIN* Planet = new BMPIN();
-    Planet->Import("text/Planet.bmp", 0x00000000);
-    BMPIN* Sun = new BMPIN();
-    Sun->Import("text/Sun.bmp", 0x00000000);
-    int SunX = 1475;
-    int SunY = 450;
-    double PlanetTheta = 3.14;
-    double moonTheta = 0;
     int messageReturn;
 
     //linked list of words
@@ -161,89 +201,246 @@ int mainMenu(HWND window, HDC hdc,Globals* Global, struct bufferMem* buffer) {
     word[0] = ' ';
     word[1] = '\0';
     bool printFileList = true;
+
+    
     while (buffer->memory == 0) {
         messageReturn = proccessMessages(Global->keyInput, window, Global, buffer);
     }
 
     setWindowColor(0x00000000, buffer, (unsigned int*)buffer->background);
     setWindowColor(0xFF000000, buffer, (unsigned int*)buffer->interactable);
-    BMPIN* image = new BMPIN();
-    image->Import("Planet.bmp", 0x00000000);
-    drawImage(500, 500, 1, image, buffer, (unsigned int*)buffer->background);
-    DrawRect(0, 0, buffer->width, 100, 0x0000FF00, buffer, (unsigned int*)buffer->background);
-    Pos pos;
-    Pos speed{0,0};
-    Pos center{ 900,500 };
-    Pos vector{0,0};
-    Pos acceleration{ 0,0 };
-    float massObject = 10;
-    float massPlanet = 10000;
-    float distance = 0;
-    DrawRect(900, 500, 905, 505, 0x0000FF00, buffer, (unsigned int*)buffer->background);
-    float theta = 0;
-    speed.y = -5;
+
+    Chunk *chunkList = new Chunk[16];
+    for (int x = 0; x < 4; x++) {
+        for (int y = 0; y < 4; y++) {
+            chunkList[x + y * 4] = Chunk(1, x * 512, y * 512, 20);
+        }
+    }
+    float up = 0;
+    float right = 0;
+    float forward = -5;
+
     int scroll = 0.0f;
+
+    Pos pos1{ 0,0 };
+    Pos pos2{ 0,0 };
+
+
+
     //run the window
     while (Global->runningWindow) {
 
-
         messageReturn = proccessMessages(Global->keyInput, window, Global, buffer);
 
+        if (Global->keyInput->buttons[BUTTON_MOUSELEFT].is_down) {
+            if ((pos1.x == 0) && (pos1.y == 0)) {
+                pos1.x = Global->cursorX;
+                pos1.y = Global->cursorY;
+                Global->keyInput->buttons[BUTTON_MOUSELEFT].is_down = false;
+
+            }
+            else if ((pos2.x == 0) && (pos2.y == 0)) {
+                pos2.x = Global->cursorX;
+                pos2.y = Global->cursorY;
+                drawLine(buffer, pos1.x, pos1.y, pos2.x, pos2.y, 1);
+                Global->keyInput->buttons[BUTTON_MOUSELEFT].is_down = false;
+            }
+            else {
+
+                drawLine(buffer, pos1.x, pos1.y, Global->cursorX, Global->cursorY, 1);
+                pos1.x = pos2.x;
+                pos1.y = pos2.y;
+                pos2.x = Global->cursorX;
+                pos2.y = Global->cursorY;
+                drawLine(buffer, pos1.x, pos1.y, pos2.x, pos2.y, 1);
+                pos1.x = 0;
+                pos1.y = 0;
+                pos2.x = 0;
+                pos2.y = 0;
+                Global->keyInput->buttons[BUTTON_MOUSELEFT].is_down = false;
+            }
+
+        
+        }
+
+        
         if (Global->keyInput->buttons[BUTTON_W].is_down) {
-            speed.y += 100 * time.delta_time;
+            /*int direction;
+            int distance;
+            unsigned int temp;
+            unsigned int* color1 = (unsigned int*)buffer->background;
+            unsigned int* color2 = color1;
+            for (int i = 0; i < 100; i++) {
+                for (int y = 200; y < 800; y++) {
+                    color1 = ((unsigned int*)buffer->background + y * buffer->width);
+                    for (int x = 200; x < 1800; x++) {
+                        direction = rand() % 4;
+                        distance = rand() % 3;
+                        if (direction == 0) {
+                            color2 = color1 + buffer->width * distance;
+                        }
+                        else if (direction == 1) {
+                            color2 = color1 + distance;
+                        }
+                        else if (direction == 2) {
+                            color2 = color1 - buffer->width * distance;
+                        }
+                        else if (direction == 3) {
+                            color2 = color1 - distance;
+                        }
+                        temp = *color1;
+                        *color1 = *color2;
+                        *color2 = temp;
+                        color1++;
+                    }
+                }
+            }*/
+
+            forward -= 10.0f * sin((-RotateX / 100) + 1.57079) * time.delta_time;
+            right -= 10.0f * cos((-RotateX / 100) + 1.57079) * time.delta_time;
         }
         if (Global->keyInput->buttons[BUTTON_A].is_down) {
-            speed.x -= 100 * time.delta_time;
+            forward += 10.0f * sin(-RotateX / 100) * time.delta_time;
+            right += 10.0f * cos(-RotateX / 100) * time.delta_time;
         }
         if (Global->keyInput->buttons[BUTTON_D].is_down) {
-            speed.x += 100 * time.delta_time;
+            forward -= 10.0f * sin(-RotateX / 100) * time.delta_time;
+            right -= 10.0f * cos(-RotateX / 100) * time.delta_time;
         }
         if (Global->keyInput->buttons[BUTTON_S].is_down) {
-            speed.y -= 100 * time.delta_time;
+            forward += 10.0f * sin((-RotateX / 100) + 1.57079) * time.delta_time;
+            right += 10.0f * cos((-RotateX / 100) + 1.57079) * time.delta_time;
         }
+        //Rotate coord shift
+        
+        
         if (Global->keyInput->buttons[BUTTON_SPACE].is_down) {
             blur(buffer, (unsigned int*)buffer->background);
             Global->keyInput->buttons[BUTTON_SPACE].is_down = false;
         }
-        vector.x = (center.x - pos.x);
-        vector.y = (center.y - pos.y);
-        distance = sqrt(vector.x * vector.x + vector.y * vector.y);
-
-        if (vector.x != 0) {
-            theta = atan((float)vector.y / (float)vector.x);
+        if (Global->keyInput->buttons[BUTTON_UP].is_down) {
+            /*for (int chunk = 0; chunk < 16; chunk++) {
+               chunkList[chunk].drawChunk(buffer);
+            }*/
+            up -= 10 * time.delta_time;
         }
-        if (vector.x < 0) {
-            theta += 3.1415f;
+        if (Global->keyInput->buttons[BUTTON_DOWN].is_down) {
+            up += 10 * time.delta_time;
         }
-        acceleration.x = ((massObject * massPlanet)/(distance * distance)) * cos(theta);
-        acceleration.y = ((massObject * massPlanet) / (distance * distance)) * sin(theta);
-
-        speed.x = speed.x + acceleration.x * time.delta_time;
-        pos.x = pos.x + speed.x * time.delta_time;
-        speed.y = speed.y + acceleration.y * time.delta_time;
-        pos.y = pos.y + speed.y * time.delta_time;
-
-        if (pos.y < 100) {
-            pos.y = 100;
+        if (Global->keyInput->buttons[BUTTON_RIGHT].is_down) {
+            fFov -= 10*time.delta_time;
+            fFovRad = buffer->height / tanf((fFov * 3.141592) / 360.0f);
+            matrixproj.m[0][0] = fFovRad;
+            matrixproj.m[1][1] = fFovRad;
+            DrawRect(0, 750, 150, buffer->height,0x00FFFFFF, buffer, buffer->UIBackground);
+            printFloat(fFov,3, 10, 800, buffer, buffer->UIBackground);
+            Global->keyInput->buttons[BUTTON_RIGHT].is_down = false;
         }
-        time.timeKeeperAlpha += time.delta_time;
-        if (time.timeKeeperAlpha > 1) {
+        if (Global->keyInput->buttons[BUTTON_LEFT].is_down) {
+            fFov += 10 * time.delta_time;
+            fFovRad = buffer->height / tanf((fFov * 3.141592) / 360.0f);
+            matrixproj.m[0][0] = fFovRad;
+            matrixproj.m[1][1] = fFovRad;
+            DrawRect(0, 750, 150, buffer->height,0x00FFFFFF, buffer, buffer->UIBackground);
+            printFloat(fFov,3, 10, 800, buffer, buffer->UIBackground);
+            Global->keyInput->buttons[BUTTON_LEFT].is_down = false;
+        }
+        DrawRect(0, 750, 150, buffer->height, 0x00FFFFFF, buffer, buffer->UIBackground);
+        printFloat(fFov, 3, 10, 800, buffer, buffer->UIBackground);
+        printFloat(fFovRad, 3, 10, 850, buffer, buffer->UIBackground);
+
+        if (abs(Global->cursorX+8 - buffer->widthHalf) > 2) {
+            RotateX += Global->cursorX+8 - buffer->widthHalf;
+            RotateY += Global->cursorY+8 - buffer->heightHalf;
+            SetCursorPos(buffer->widthHalf, buffer->heightHalf);
+            matrixRot.m[0][0] = cos(RotateX/100);
+            matrixRot.m[0][2] = sin(RotateX/100);
+
+            matrixRot.m[2][0] = cos(RotateX/100 + 1.57079);
+            matrixRot.m[2][2] = sin(RotateX/100 + 1.57079);
+
+        }
         
-            setPixelColor(pos.x + 5, pos.y + 5, 0x0000FF00, buffer, (unsigned int*)buffer->background);
-            time.timeKeeperAlpha = 0;
+        //scale
+        for (triangle tri : cube.tris) {
+
+
+            triangle triTranslated;
+            triangle triExpanded{};
+            triangle triRotated{};
+            
+            //expand;
+            triExpanded.verts[0].x = tri.verts[0].x * 1;
+            triExpanded.verts[1].x = tri.verts[1].x * 1;
+            triExpanded.verts[2].x = tri.verts[2].x * 1;
+
+            triExpanded.verts[0].y = tri.verts[0].y * 1;
+            triExpanded.verts[1].y = tri.verts[1].y * 1;
+            triExpanded.verts[2].y = tri.verts[2].y * 1;
+
+            triExpanded.verts[0].z = (tri.verts[0].z+1) * 1;
+            triExpanded.verts[1].z = (tri.verts[1].z+1) * 1;
+            triExpanded.verts[2].z = (tri.verts[2].z+1) * 1;
+
+
+
+            
+
+            //shift foward;
+            triTranslated.verts[0].x = triExpanded.verts[0].x - right;
+            triTranslated.verts[1].x = triExpanded.verts[1].x - right;
+            triTranslated.verts[2].x = triExpanded.verts[2].x - right;
+
+            triTranslated.verts[0].y = triExpanded.verts[0].y - up;
+            triTranslated.verts[1].y = triExpanded.verts[1].y - up;
+            triTranslated.verts[2].y = triExpanded.verts[2].y - up;
+
+            triTranslated.verts[0].z = triExpanded.verts[0].z - forward;
+            triTranslated.verts[1].z = triExpanded.verts[1].z - forward;
+            triTranslated.verts[2].z = triExpanded.verts[2].z - forward;
+
+            //Rotate 
+            multiplyByRotMat(triRotated.verts[0], triTranslated.verts[0], matrixRot);
+            multiplyByRotMat(triRotated.verts[1], triTranslated.verts[1], matrixRot);
+            multiplyByRotMat(triRotated.verts[2], triTranslated.verts[2], matrixRot);
+
+
+
+
+
+            //create scale;
+            triangle triProjected;
+            multiplyByProjMat(triProjected.verts[0], triRotated.verts[0], matrixproj);
+            multiplyByProjMat(triProjected.verts[1], triRotated.verts[1], matrixproj);
+            multiplyByProjMat(triProjected.verts[2], triRotated.verts[2], matrixproj);
+            
+            
+            drawLine(buffer, triProjected.verts[0].x + buffer->widthHalf, triProjected.verts[0].y + buffer->heightHalf, triProjected.verts[1].x + buffer->widthHalf, triProjected.verts[1].y + buffer->heightHalf, 1);
+            drawLine(buffer, triProjected.verts[1].x + buffer->widthHalf, triProjected.verts[1].y + buffer->heightHalf, triProjected.verts[2].x + buffer->widthHalf, triProjected.verts[2].y + buffer->heightHalf, 1);
+            drawLine(buffer, triProjected.verts[2].x + buffer->widthHalf, triProjected.verts[2].y + buffer->heightHalf, triProjected.verts[0].x + buffer->widthHalf, triProjected.verts[0].y + buffer->heightHalf, 1);
         }
 
 
-        printNumber((int)pos.x, 103, 103, buffer, (unsigned int*)buffer->interactable);
-        printNumber((int)pos.y, 203, 103, buffer, (unsigned int*)buffer->interactable);
+
+
+
         //combine all the bitmap layers
         unsigned int* background = (unsigned int*)buffer->background;
         unsigned int* memory = (unsigned int*)buffer->memory;
         unsigned int* interactable = (unsigned int*)buffer->interactable;
-        for (int x = 0; x < buffer->width; x++) {
-            for (int y = 0; y < buffer->height; y++) {
+        int newx = 0;
+        int newy = 0;
+        for (int y = 0; y < buffer->height-1; y++) {
+            for (int x = 0; x < buffer->width; x++) {
                 if (*background >> 24 != 0xFF) {
                     *memory = *background;
+                        /*newy = up - ((up * 1540) / (y + 1540));
+                        if (x != buffer->width / 2) {
+                            newx = (((newy - up) * (right - x)) / 1080) + right;
+                        }
+                        if ((newx + newy * buffer->width > 0) && (buffer->width * buffer->height > newx + newy * buffer->width)) {
+                            *((unsigned int*)buffer->memory + newx + newy * buffer->width) = *background;
+                        }*/
                 }
                 if (*interactable >> 24 != 0xFF) {
                     *memory = *interactable;
@@ -254,13 +451,12 @@ int mainMenu(HWND window, HDC hdc,Globals* Global, struct bufferMem* buffer) {
             }
         }
 
-        DrawRect(pos.x, pos.y, pos.x + 10, pos.y + 10, 0x0000FF00, buffer, (unsigned int*)buffer->memory);
 
 
         //draw the created image to the screen
         StretchDIBits(hdc, 0, 0, buffer->width, buffer->height, 0, 0, buffer->width, buffer->height, buffer->memory, &buffer->buffer_bitmap_info, DIB_RGB_COLORS, SRCCOPY);
-        setWindowColor(0xFF000000, buffer, (unsigned int*)buffer->interactable);
-
+        setWindowColor(0x00000000, buffer, (unsigned int*)buffer->memory);
+        setWindowColor(0x00000000, buffer, (unsigned int*)buffer->background);
         //get the time a frame took to render.
         QueryPerformanceCounter(&time.frame_end_time);
         time.delta_time = (float)(time.frame_end_time.QuadPart - time.frame_begin_time.QuadPart) / time.performance_frequency;
@@ -268,56 +464,8 @@ int mainMenu(HWND window, HDC hdc,Globals* Global, struct bufferMem* buffer) {
 
     }//end while
 
+
     return 0;
-}
-
-void blur(bufferMem* buffer, unsigned int* buffer_memory)
-{
-    void* tempBuffervoid = malloc(buffer->width * buffer->height * 4);
-    unsigned int* tempbuffer;
-    tempbuffer = (unsigned int*)tempBuffervoid;
-    setWindowColor(0x00000000, buffer, tempbuffer);
-    unsigned int newcolor;
-    unsigned int* pixel1;
-    unsigned int* pixel2;
-    unsigned int* pixel3;
-    unsigned int* pixel4;
-    unsigned int* pixel5;
-    unsigned int* pixel6;
-    unsigned int* pixel7;
-    unsigned int* pixel8;
-    unsigned int* pixel9;
-    tempbuffer += buffer->width;
-    for (int y = 1; y < buffer->height - 1; y++) {
-        tempbuffer++;
-        for (int x = 1; x < buffer->width - 1; x++) {
-            pixel1 = buffer_memory + x + y * buffer->width;
-            pixel2 = buffer_memory + x + (y-1) * buffer->width;
-            pixel3 = buffer_memory + x + (y + 1) * buffer->width;
-            pixel4 = buffer_memory + x + 1 + y * buffer->width;
-            pixel5 = buffer_memory + x + 1 + (y - 1) * buffer->width;
-            pixel6 = buffer_memory + x + 1 + (y + 1) * buffer->width;
-            pixel7 = buffer_memory + x - 1 + y * buffer->width;
-            pixel8 = buffer_memory + x - 1 + (y - 1) * buffer->width;
-            pixel9 = buffer_memory + x - 1 + (y + 1) * buffer->width;
-            newcolor = 0;
-            newcolor = newcolor + ((((*pixel1 & 0x000000FF) + (*pixel2 & 0x000000FF) + (*pixel3 & 0x000000FF) + (*pixel4 & 0x000000FF) + (*pixel5 & 0x000000FF) + (*pixel6 & 0x000000FF) + (*pixel7 & 0x000000FF) + (*pixel8 & 0x000000FF) + (*pixel9 & 0x000000FF)) / 9) & 0x000000FF);
-            newcolor = newcolor + ((((*pixel1 & 0x0000FF00) + (*pixel2 & 0x0000FF00) + (*pixel3 & 0x0000FF00) + (*pixel4 & 0x0000FF00) + (*pixel5 & 0x0000FF00) + (*pixel6 & 0x0000FF00) + (*pixel7 & 0x0000FF00) + (*pixel8 & 0x0000FF00) + (*pixel9 & 0x0000FF00)) / 9) & 0x0000FF00);
-            newcolor = newcolor + ((((*pixel1 & 0x00FF0000) + (*pixel2 & 0x00FF0000) + (*pixel3 & 0x00FF0000) + (*pixel4 & 0x00FF0000) + (*pixel5 & 0x00FF0000) + (*pixel6 & 0x00FF0000) + (*pixel7 & 0x00FF0000) + (*pixel8 & 0x00FF0000) + (*pixel9 & 0x00FF0000)) / 9) & 0x00FF0000);
-
-            *tempbuffer = newcolor;
-            tempbuffer++;
-        }
-        tempbuffer ++;
-    }
-
-    tempbuffer = (unsigned int*)tempBuffervoid;
-    for (int i = 0; i < buffer->width * buffer->height; i++) {
-        
-        *(buffer_memory + i) = *(tempbuffer + i);
-    }
-
-
 }
 
 
@@ -330,8 +478,8 @@ int proccessMessages(struct Input* keyInput, HWND window, Globals* Global, buffe
     POINT p;
     GetCursorPos(&p);
     ScreenToClient(window, &p);
-
-
+    Global->cursorX = p.x;
+    Global->cursorY = p.y;
     while (PeekMessage(&message, window, 0, 0, PM_REMOVE)) {
 
         bool is_down = ((message.lParam & (1 << 31)) == 0);
@@ -355,14 +503,17 @@ int proccessMessages(struct Input* keyInput, HWND window, Globals* Global, buffe
             else if (vk_code == 8) {}
             switch (vk_code) {
             case VK_UP: {
-                
+                Global->keyInput->buttons[BUTTON_UP].is_down = is_down;
             }break;
             case VK_DOWN: {
-                
+                Global->keyInput->buttons[BUTTON_DOWN].is_down = is_down;
 
             }break;
             case VK_LEFT: {
-                
+                Global->keyInput->buttons[BUTTON_LEFT].is_down = is_down;
+            }break;
+            case VK_RIGHT: {
+                Global->keyInput->buttons[BUTTON_RIGHT].is_down = is_down;
             }break;
             case 65: {
                 switch(key) {
@@ -417,8 +568,10 @@ int proccessMessages(struct Input* keyInput, HWND window, Globals* Global, buffe
             POINT p;
             GetCursorPos(&p);
             ScreenToClient(window, &p);
-            p.x;
-            p.y;
+            Global->cursorX = p.x;
+            Global->cursorY = buffer->height - p.y;
+            
+            Global->keyInput->buttons[BUTTON_MOUSELEFT].is_down = is_down;
         }return messageReturn;
         case WM_CLOSE:
         case WM_DESTROY: {
