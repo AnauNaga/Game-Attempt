@@ -126,7 +126,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
     window_class.lpfnWndProc = window_callback;
     window_class.hInstance = hInstance;
     RegisterClass(&window_class);
-    HWND window = CreateWindow(window_class.lpszClassName, L"Cosmic Database", WS_OVERLAPPED | WS_VISIBLE | WS_MINIMIZEBOX | WS_SYSMENU, 0, 0, 1936, 1040, 0, 0, hInstance, 0);
+    HWND window = CreateWindow(window_class.lpszClassName, L"Cosmic Database", WS_OVERLAPPED | WS_VISIBLE | WS_MINIMIZEBOX | WS_SYSMENU, 0, 0, 1920, 1040, 0, 0, hInstance, 0);
     HDC hdc = GetDC(window);
     mainMenu(window, hdc, Global, buffer);
 }//end winMain
@@ -151,8 +151,28 @@ int mainMenu(HWND window, HDC hdc,Globals* Global, struct bufferMem* buffer) {
             
     };
 
+    cube.UVMap = {
+            //front
+            {0.0f,0.0f ,0.0f,1.0f, 1.0f,0.0f},  {0.0f,0.0f ,0.0f,1.0f, 1.0f,0.0f},
+            //right
+            {0.0f,0.0f ,0.0f,1.0f, 1.0f,0.0f},  {0.0f,0.0f ,0.0f,1.0f, 1.0f,0.0f},
+            //left
+            {0.0f,0.0f ,0.0f,1.0f, 1.0f,0.0f},  {0.0f,0.0f ,0.0f,1.0f, 1.0f,0.0f},
+            //back
+            {0.0f,0.0f ,0.0f,1.0f, 1.0f,0.0f},  {0.0f,0.0f ,0.0f,1.0f, 1.0f,0.0f},
+            //up
+            {0.0f,0.0f ,0.0f,1.0f, 1.0f,0.0f},  {0.0f,0.0f ,0.0f,1.0f, 1.0f,0.0f},
+            //bottom
+            {0.0f,0.0f ,0.0f,1.0f, 1.0f,0.0f},  {0.0f,0.0f ,0.0f,1.0f, 1.0f,0.0f},
+    };
+
+    BMPIN* stone = new BMPIN;
+    stone->Import("Stone.bmp");
+
     mat4x4 matrixproj{0};
-    mat3x3 matrixRot{0};
+    mat3x3 matrixRotSide{0};
+    mat3x3 matrixRotUp{ 0 };
+    vertex Light{ sqrt(2),sqrt(2),0};
 
     // projection matrix
     float fNear = 0.1f;
@@ -170,9 +190,9 @@ int mainMenu(HWND window, HDC hdc,Globals* Global, struct bufferMem* buffer) {
     matrixproj.m[3][3] = 0.0f;
 
     //initialize Rotation matrix
-    matrixRot.m[0][0] = 1.0f;
-    matrixRot.m[1][1] = 1.0f;
-    matrixRot.m[2][2] = 1.0f;
+    matrixRotSide.m[0][0] = 1.0f;
+    matrixRotSide.m[1][1] = 1.0f;
+    matrixRotSide.m[2][2] = 1.0f;
     float RotateX = 0;
     float RotateY = 0;
 
@@ -218,7 +238,9 @@ int mainMenu(HWND window, HDC hdc,Globals* Global, struct bufferMem* buffer) {
     }
     float up = 0;
     float right = 0;
-    float forward = -5;
+    float forward = 5;
+
+    vertex viewVector{ 0,0,1 };
 
     int scroll = 0.0f;
 
@@ -265,36 +287,7 @@ int mainMenu(HWND window, HDC hdc,Globals* Global, struct bufferMem* buffer) {
 
         
         if (Global->keyInput->buttons[BUTTON_W].is_down) {
-            /*int direction;
-            int distance;
-            unsigned int temp;
-            unsigned int* color1 = (unsigned int*)buffer->background;
-            unsigned int* color2 = color1;
-            for (int i = 0; i < 100; i++) {
-                for (int y = 200; y < 800; y++) {
-                    color1 = ((unsigned int*)buffer->background + y * buffer->width);
-                    for (int x = 200; x < 1800; x++) {
-                        direction = rand() % 4;
-                        distance = rand() % 3;
-                        if (direction == 0) {
-                            color2 = color1 + buffer->width * distance;
-                        }
-                        else if (direction == 1) {
-                            color2 = color1 + distance;
-                        }
-                        else if (direction == 2) {
-                            color2 = color1 - buffer->width * distance;
-                        }
-                        else if (direction == 3) {
-                            color2 = color1 - distance;
-                        }
-                        temp = *color1;
-                        *color1 = *color2;
-                        *color2 = temp;
-                        color1++;
-                    }
-                }
-            }*/
+            
 
             forward -= 10.0f * sin((-RotateX / 100) + 1.57079) * time.delta_time;
             right -= 10.0f * cos((-RotateX / 100) + 1.57079) * time.delta_time;
@@ -311,22 +304,19 @@ int mainMenu(HWND window, HDC hdc,Globals* Global, struct bufferMem* buffer) {
             forward += 10.0f * sin((-RotateX / 100) + 1.57079) * time.delta_time;
             right += 10.0f * cos((-RotateX / 100) + 1.57079) * time.delta_time;
         }
-        //Rotate coord shift
         
         
         if (Global->keyInput->buttons[BUTTON_SPACE].is_down) {
-            blur(buffer, (unsigned int*)buffer->background);
-            Global->keyInput->buttons[BUTTON_SPACE].is_down = false;
-        }
-        if (Global->keyInput->buttons[BUTTON_UP].is_down) {
-            /*for (int chunk = 0; chunk < 16; chunk++) {
-               chunkList[chunk].drawChunk(buffer);
-            }*/
+            
             up -= 10 * time.delta_time;
         }
-        if (Global->keyInput->buttons[BUTTON_DOWN].is_down) {
+        if (Global->keyInput->buttons[BUTTON_CONTROL].is_down) {
             up += 10 * time.delta_time;
         }
+
+
+
+        //change FOV
         if (Global->keyInput->buttons[BUTTON_RIGHT].is_down) {
             fFov -= 10*time.delta_time;
             fFovRad = buffer->height / tanf((fFov * 3.141592) / 360.0f);
@@ -345,82 +335,135 @@ int mainMenu(HWND window, HDC hdc,Globals* Global, struct bufferMem* buffer) {
             printFloat(fFov,3, 10, 800, buffer, buffer->UIBackground);
             Global->keyInput->buttons[BUTTON_LEFT].is_down = false;
         }
+
+
+
+
         DrawRect(0, 750, 150, buffer->height, 0x00FFFFFF, buffer, buffer->UIBackground);
         printFloat(fFov, 3, 10, 800, buffer, buffer->UIBackground);
         printFloat(fFovRad, 3, 10, 850, buffer, buffer->UIBackground);
 
-        if (abs(Global->cursorX+8 - buffer->widthHalf) > 2) {
-            RotateX += Global->cursorX+8 - buffer->widthHalf;
-            RotateY += Global->cursorY+8 - buffer->heightHalf;
-            SetCursorPos(buffer->widthHalf, buffer->heightHalf);
-            matrixRot.m[0][0] = cos(RotateX/100);
-            matrixRot.m[0][2] = sin(RotateX/100);
+        if ((abs(Global->cursorX+8 - buffer->widthHalf) > 0) || ((Global->cursorY+31 - buffer->heightHalf)> 0)) {
 
-            matrixRot.m[2][0] = cos(RotateX/100 + 1.57079);
-            matrixRot.m[2][2] = sin(RotateX/100 + 1.57079);
-
+            if (GetForegroundWindow() == window) {
+                RotateX += Global->cursorX + 8 - buffer->widthHalf;
+                RotateY += Global->cursorY + 31 - buffer->heightHalf;
+                if (RotateY > 122.16) {
+                    RotateY = 122.16;
+                }
+                if (RotateY < -122.16) {
+                    RotateY = -122.16;
+                }
+                SetCursorPos(buffer->widthHalf, buffer->heightHalf);
+                matrixRotSide.m[0][0] = cos(RotateX / 100);
+                matrixRotSide.m[0][2] = sin(RotateX / 100);
+                matrixRotSide.m[2][0] = cos(RotateX / 100 + 1.57079);
+                matrixRotSide.m[2][2] = sin(RotateX / 100 + 1.57079);
+                matrixRotUp.m[1][1] = cos(RotateY / 100);
+                matrixRotUp.m[1][2] = sin(RotateY / 100);
+            }
         }
         
         //scale
         for (triangle tri : cube.tris) {
 
-
-            triangle triTranslated;
-            triangle triExpanded{};
-            triangle triRotated{};
             
-            //expand;
-            triExpanded.verts[0].x = tri.verts[0].x * 1;
-            triExpanded.verts[1].x = tri.verts[1].x * 1;
-            triExpanded.verts[2].x = tri.verts[2].x * 1;
+                triangle triTranslated;
+                triangle triExpanded{};
+                triangle triRotatedSide{};
+                triangle triRotatedUp{};
 
-            triExpanded.verts[0].y = tri.verts[0].y * 1;
-            triExpanded.verts[1].y = tri.verts[1].y * 1;
-            triExpanded.verts[2].y = tri.verts[2].y * 1;
+                vertex vectorLeft{ tri.verts[1].x - tri.verts[0].x,tri.verts[1].y - tri.verts[0].y, tri.verts[1].z - tri.verts[0].z };
+                vertex vectorRight{ tri.verts[2].x - tri.verts[0].x,tri.verts[2].y - tri.verts[0].y, tri.verts[2].z - tri.verts[0].z };
+                vertex Face{ 0,0,0 };
+                
+                CrossProduct(Face, vectorLeft, vectorRight);
+                float FaceScale = sqrt((Face.x * Face.x) + (Face.y * Face.y) + (Face.z * Face.z));
+                Face = {Face.x/FaceScale,Face.y / FaceScale ,Face.z / FaceScale };
+                float DP = DotProduct(Light, Face)+1;
+                DP = DP * 0.75 + 0.5;
+                //expand;
+                triExpanded.verts[0].x = tri.verts[0].x * 1;
+                triExpanded.verts[1].x = tri.verts[1].x * 1;
+                triExpanded.verts[2].x = tri.verts[2].x * 1;
 
-            triExpanded.verts[0].z = (tri.verts[0].z+1) * 1;
-            triExpanded.verts[1].z = (tri.verts[1].z+1) * 1;
-            triExpanded.verts[2].z = (tri.verts[2].z+1) * 1;
+                triExpanded.verts[0].y = tri.verts[0].y * 1;
+                triExpanded.verts[1].y = tri.verts[1].y * 1;
+                triExpanded.verts[2].y = tri.verts[2].y * 1;
 
-
-
-            
-
-            //shift foward;
-            triTranslated.verts[0].x = triExpanded.verts[0].x - right;
-            triTranslated.verts[1].x = triExpanded.verts[1].x - right;
-            triTranslated.verts[2].x = triExpanded.verts[2].x - right;
-
-            triTranslated.verts[0].y = triExpanded.verts[0].y - up;
-            triTranslated.verts[1].y = triExpanded.verts[1].y - up;
-            triTranslated.verts[2].y = triExpanded.verts[2].y - up;
-
-            triTranslated.verts[0].z = triExpanded.verts[0].z - forward;
-            triTranslated.verts[1].z = triExpanded.verts[1].z - forward;
-            triTranslated.verts[2].z = triExpanded.verts[2].z - forward;
-
-            //Rotate 
-            multiplyByRotMat(triRotated.verts[0], triTranslated.verts[0], matrixRot);
-            multiplyByRotMat(triRotated.verts[1], triTranslated.verts[1], matrixRot);
-            multiplyByRotMat(triRotated.verts[2], triTranslated.verts[2], matrixRot);
+                triExpanded.verts[0].z = (tri.verts[0].z + 1) * 1;
+                triExpanded.verts[1].z = (tri.verts[1].z + 1) * 1;
+                triExpanded.verts[2].z = (tri.verts[2].z + 1) * 1;
 
 
 
 
 
-            //create scale;
-            triangle triProjected;
-            multiplyByProjMat(triProjected.verts[0], triRotated.verts[0], matrixproj);
-            multiplyByProjMat(triProjected.verts[1], triRotated.verts[1], matrixproj);
-            multiplyByProjMat(triProjected.verts[2], triRotated.verts[2], matrixproj);
-            
-            
-            drawLine(buffer, triProjected.verts[0].x + buffer->widthHalf, triProjected.verts[0].y + buffer->heightHalf, triProjected.verts[1].x + buffer->widthHalf, triProjected.verts[1].y + buffer->heightHalf, 1);
-            drawLine(buffer, triProjected.verts[1].x + buffer->widthHalf, triProjected.verts[1].y + buffer->heightHalf, triProjected.verts[2].x + buffer->widthHalf, triProjected.verts[2].y + buffer->heightHalf, 1);
-            drawLine(buffer, triProjected.verts[2].x + buffer->widthHalf, triProjected.verts[2].y + buffer->heightHalf, triProjected.verts[0].x + buffer->widthHalf, triProjected.verts[0].y + buffer->heightHalf, 1);
+                //shift foward;
+                triTranslated.verts[0].x = triExpanded.verts[0].x - right;
+                triTranslated.verts[1].x = triExpanded.verts[1].x - right;
+                triTranslated.verts[2].x = triExpanded.verts[2].x - right;
+
+                triTranslated.verts[0].y = triExpanded.verts[0].y - up;
+                triTranslated.verts[1].y = triExpanded.verts[1].y - up;
+                triTranslated.verts[2].y = triExpanded.verts[2].y - up;
+
+                triTranslated.verts[0].z = triExpanded.verts[0].z - forward;
+                triTranslated.verts[1].z = triExpanded.verts[1].z - forward;
+                triTranslated.verts[2].z = triExpanded.verts[2].z - forward;
+
+                //Rotate side to side
+                multiplyByRotMat(triRotatedSide.verts[0], triTranslated.verts[0], matrixRotSide);
+                multiplyByRotMat(triRotatedSide.verts[1], triTranslated.verts[1], matrixRotSide);
+                multiplyByRotMat(triRotatedSide.verts[2], triTranslated.verts[2], matrixRotSide);
+
+                ////Rotate Up/Down
+                //multiplyByRotMat(triRotatedUp.verts[0], triRotatedSide.verts[0], matrixRotUp);
+                //multiplyByRotMat(triRotatedUp.verts[1], triRotatedSide.verts[1], matrixRotUp);
+                //multiplyByRotMat(triRotatedUp.verts[2], triRotatedSide.verts[2], matrixRotUp);
+
+
+
+                //create scale;
+                triangle triProjected;
+                multiplyByProjMat(triProjected.verts[0], triRotatedSide.verts[0], matrixproj);
+                multiplyByProjMat(triProjected.verts[1], triRotatedSide.verts[1], matrixproj);
+                multiplyByProjMat(triProjected.verts[2], triRotatedSide.verts[2], matrixproj);
+
+                vectorLeft = { triProjected.verts[1].x- triProjected.verts[0].x,triProjected.verts[1].y - triProjected.verts[0].y, triProjected.verts[1].z - triProjected.verts[0].z };
+                vectorRight = { triProjected.verts[2].x - triProjected.verts[0].x,triProjected.verts[2].y - triProjected.verts[0].y, triProjected.verts[2].z - triProjected.verts[0].z };
+
+                CrossProduct(Face, vectorLeft, vectorRight);
+
+            if (DotProduct(viewVector,Face) > 0) {
+
+                if ((triProjected.verts[0].z > 0) && (triProjected.verts[1].z > 0) && (triProjected.verts[2].z > 0)) {
+                    //float xInc = cube.UVMap[0]. / stone->getHeight();
+                    //set to orgin of screen
+                    triProjected.verts[0].x += buffer->widthHalf;
+                    triProjected.verts[1].x += buffer->widthHalf;
+                    triProjected.verts[2].x += buffer->widthHalf;
+                    triProjected.verts[0].y += buffer->heightHalf;
+                    triProjected.verts[1].y += buffer->heightHalf;
+                    triProjected.verts[2].y += buffer->heightHalf;
+
+                    unsigned int color = 0x00009900;
+                    unsigned int newColor = ((unsigned int)(((color >> 16)&0xFF)*DP)<< 16) + ((unsigned int)(((color >> 8) & 0xFF) *DP) << 8) + ((unsigned int)(((color) & 0xFF) * DP));
+                    fillTriangle(buffer, triProjected.verts, newColor);
+                    //drawLine(buffer, triProjected.verts[0].x, triProjected.verts[0].y, triProjected.verts[1].x, triProjected.verts[1].y, 1);
+                    //drawLine(buffer, triProjected.verts[1].x, triProjected.verts[1].y, triProjected.verts[2].x, triProjected.verts[2].y, 1);
+                    //drawLine(buffer, triProjected.verts[2].x, triProjected.verts[2].y, triProjected.verts[0].x, triProjected.verts[0].y, 1);
+                }
+            }
         }
 
-
+        
+        /*for (int y = 0; y < buffer->height/100; y++) {
+            for (int x = 0; x < buffer->width/100; x++) {
+                unsigned int* grid = buffer->UIBackground + x * 100 + y * 100 * buffer->width;
+                *grid = 0x00FFFFFF;
+            }
+        }*/
 
 
 
@@ -556,6 +599,9 @@ int proccessMessages(struct Input* keyInput, HWND window, Globals* Global, buffe
             case VK_SHIFT: {
 
             }break;
+            case VK_CONTROL: {
+                Global->keyInput->buttons[BUTTON_CONTROL].is_down = is_down;
+            }
             default: {
                 TranslateMessage(&message);
                 DispatchMessage(&message);

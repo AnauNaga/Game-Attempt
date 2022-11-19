@@ -42,6 +42,16 @@ struct textLine {
     textLine* nextNode;
 };
 
+
+
+struct Vector{
+    float x,y;
+};
+struct UVMap {
+
+    Vector UVmap[3];
+};
+
 struct vertex {
     float x, y, z;
 };
@@ -49,10 +59,10 @@ struct vertex {
 struct triangle {
     vertex verts[3];
 
-
 };
 struct shape {
     std::vector<triangle> tris;
+    std::vector<UVMap> UVMap;
 };
 struct mat4x4 {
     float m[4][4] = { 0.0f };
@@ -81,5 +91,8 @@ void blur(bufferMem* buffer, unsigned int* buffer_memory);
 void multiplyByProjMat(vertex& newVector, vertex& Vector, mat4x4& Matrix);
 void multiplyByRotMat(vertex& newVector, vertex& Vector, mat3x3& Matrix);
 void CrossProduct(vertex& newVector, vertex& Vector1, vertex& Vector2);
-
+float DotProduct(vertex& Vector1, vertex& Vector2);
+void fillTriangle(bufferMem* buffer, vertex* verts, unsigned int color);
+void sortVertsY(vertex* sortedArray, vertex* verts, int arraySize);
+void sortVertsX(vertex* sortedArray, vertex* verts, int arraySize);
 #endif

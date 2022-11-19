@@ -591,3 +591,304 @@ void multiplyByRotMat(vertex& newVector, vertex& Vector, mat3x3& matrix) {
 void CrossProduct(vertex& newVector, vertex& Vector1, vertex& Vector2){
     newVector = { (Vector1.y * Vector2.z) - (Vector1.z * Vector2.y),(Vector1.x * Vector2.z) - (Vector1.z * Vector2.x),(Vector1.x * Vector2.y) - (Vector1.y * Vector2.x) };
 }
+float DotProduct(vertex& Vector1, vertex& Vector2) {
+    return (Vector1.x * Vector2.x) + (Vector1.y * Vector2.y) + (Vector1.z * Vector2.z);
+}
+
+
+void fillTriangle(bufferMem* buffer, vertex* verts, unsigned int color){
+    vertex sortedArrayX[3];
+    vertex sortedArrayY[3];
+    sortVertsX(sortedArrayX, verts, 3);
+    sortVertsY(sortedArrayY, verts, 3);
+    vertex vert1{ 0 };
+    vertex vert2{ 0 };
+    vertex vert1Norm{ 0 };
+    vertex vert2Norm{ 0 };
+    float vert1Scale;
+    float vert2Scale;
+    float dxLeft;
+    float dxRight;
+    int xLeft;
+    int xRight;
+    int xLeft2 = 1;
+    int xRight2 = 1;
+    int xMin;
+    int xMax;
+    int yOffset;
+    int yOffset2;
+    unsigned int* currentLine;
+
+
+    if (sortedArrayY[2].y != sortedArrayY[1].y) {
+
+        //
+        vert1 = { sortedArrayY[1].x - sortedArrayY[2].x, sortedArrayY[1].y - sortedArrayY[2].y };
+        vert2 = { sortedArrayY[0].x - sortedArrayY[2].x, sortedArrayY[0].y - sortedArrayY[2].y };
+        vert1Scale = sqrt((vert1.x * vert1.x) + (vert1.y * vert1.y));
+        vert2Scale = sqrt((vert2.x * vert2.x) + (vert2.y * vert2.y));
+        vert1Norm = { vert1.x / vert1Scale,vert1.y / vert1Scale };
+        vert2Norm = { vert2.x / vert2Scale,vert2.y / vert2Scale };
+
+        if (vert1Norm.x > vert2Norm.x) {
+            dxLeft = vert2Norm.y / vert2Norm.x;
+            dxRight = vert1Norm.y / vert1Norm.x;
+
+        }
+        else if (vert1Norm.x < vert2Norm.x) {
+            dxRight = vert2Norm.y / vert2Norm.x;
+            dxLeft = vert1Norm.y / vert1Norm.x;
+        }
+        xMin = sortedArrayX[0].x;
+        xMax = sortedArrayX[2].x;
+        if (vert1Norm.x != vert2Norm.x) {
+            for (int y = 0; y > sortedArrayY[1].y - sortedArrayY[2].y - 1; y--) {
+                xLeft = y / dxLeft + sortedArrayY[2].x - 2;
+                xRight = y / dxRight + sortedArrayY[2].x + 2;
+                if (xLeft > buffer->width) { xLeft = buffer->width; }
+                if (xRight > buffer->width) { xRight = buffer->width; }
+                if (xLeft < 0) { xLeft = 1; }
+                if (xRight < 0) { xRight = 1; }
+                if (xLeft < xMin) {
+                    xLeft = xMin;
+                }
+                if (xRight > xMax) {
+                    xRight = xMax;
+                }
+
+                yOffset = (int)sortedArrayY[2].y + y + 1;
+                if (yOffset > buffer->height) { yOffset = buffer->height; }
+                if (yOffset < 0) { yOffset = 0; }
+                currentLine = buffer->UIBackground + xLeft + yOffset * buffer->width;
+                if (xRight + yOffset * buffer->width < buffer->width * buffer->height) {
+                    for (int x = xLeft; x < xRight; x++) {
+                        *currentLine = color;
+                        currentLine++;
+                    }
+                    xLeft2 = xLeft;
+                    xRight2 = xRight;
+                    yOffset2 = yOffset;
+                }
+
+            }
+        }
+
+        //second half of the triangle
+        if (sortedArrayY[0].y != sortedArrayY[1].y) {
+            vert1 = { sortedArrayY[1].x - sortedArrayY[0].x, sortedArrayY[1].y - sortedArrayY[0].y };
+            vert2 = { sortedArrayY[2].x - sortedArrayY[0].x, sortedArrayY[2].y - sortedArrayY[0].y };
+            vert1Scale = sqrt((vert1.x * vert1.x) + (vert1.y * vert1.y));
+            vert2Scale = sqrt((vert2.x * vert2.x) + (vert2.y * vert2.y));
+            vert1Norm = { vert1.x / vert1Scale,vert1.y / vert1Scale };
+            vert2Norm = { vert2.x / vert2Scale,vert2.y / vert2Scale };
+
+            if (vert1Norm.x > vert2Norm.x) {
+                dxLeft = vert2Norm.y / vert2Norm.x;
+                dxRight = vert1Norm.y / vert1Norm.x;
+
+            }
+            else if (vert1Norm.x < vert2Norm.x) {
+                dxRight = vert2Norm.y / vert2Norm.x;
+                dxLeft = vert1Norm.y / vert1Norm.x;
+
+            }
+
+            if (vert1Norm.x != vert2Norm.x) {
+                for (int y = 0; y > sortedArrayY[0].y - sortedArrayY[1].y -2; y--) {
+                    xLeft = y / dxLeft + xLeft2-1;
+                    xRight = y / dxRight + xRight2+1;
+                    if (xLeft > buffer->width) { xLeft = buffer->width; }
+                    if (xRight > buffer->width) { xRight = buffer->width; }
+                    if (xLeft < 0) { xLeft = 1; }
+                    if (xRight < 0) { xRight = 1; }
+
+                    if (xLeft < xMin) {
+                        xLeft = xMin;
+                    }
+                    if (xRight > xMax) {
+                        xRight = xMax;
+                    }
+
+                    yOffset = yOffset2 + y;
+                    if (yOffset > buffer->height) { yOffset = buffer->height; }
+                    if (yOffset < 0) { yOffset = 0; }
+
+
+                    currentLine = buffer->UIBackground + xLeft + yOffset * buffer->width;
+                    if (xRight + (yOffset) * buffer->width < buffer->width * buffer->height) {
+                        for (int x = xLeft; x < xRight; x++) {
+                            *currentLine = color;
+                            currentLine++;
+                        }
+                    }
+
+                }
+            }
+
+        }
+    }
+
+
+
+
+
+
+    //if (sortedArrayY[2].y != sortedArrayY[1].y) {
+    //    vert1 = {sortedArrayY[1].x - sortedArrayY[2].x, sortedArrayY[1].y - sortedArrayY[2].y};
+    //    vert2 = { sortedArrayY[0].x - sortedArrayY[2].x, sortedArrayY[0].y - sortedArrayY[2].y };
+    //    vert1Scale = sqrt((vert1.x * vert1.x) + (vert1.y * vert1.y));
+    //    vert2Scale = sqrt((vert2.x * vert2.x) + (vert2.y * vert2.y));
+    //    vert1Norm = {vert1.x/vert1Scale,vert1.y/vert1Scale};
+    //    vert2Norm = { vert2.x / vert2Scale,vert2.y / vert2Scale };
+
+    //    if (vert1Norm.x > vert2Norm.x) {
+    //        dxLeft = vert2Norm.y / vert2Norm.x;
+    //        dxRight = vert1Norm.y / vert1Norm.x;
+    //        
+    //    }
+    //    else if (vert1Norm.x < vert2Norm.x) {
+    //        dxRight = vert2Norm.y / vert2Norm.x;
+    //        dxLeft = vert1Norm.y / vert1Norm.x;
+    //    }
+    //    xMin = sortedArrayX[0].x;
+    //    xMax = sortedArrayX[2].x;
+    //    if (vert1Norm.x != vert2Norm.x) {
+    //        for (int y = 0; y > sortedArrayY[1].y - sortedArrayY[2].y-1; y--) {
+    //            xLeft = y / dxLeft + sortedArrayY[2].x-2;
+    //            xRight = y / dxRight + sortedArrayY[2].x+2;
+    //            if (xLeft > buffer->width) { xLeft = buffer->width; }
+    //            if (xRight > buffer->width) { xRight = buffer->width; }
+    //            if (xLeft < 0) { xLeft = 1; }
+    //            if (xRight < 0) { xRight = 1; }
+    //            if (xLeft < xMin) {
+    //                xLeft = xMin;
+    //            }
+    //            if (xRight > xMax) {
+    //                xRight = xMax;
+    //            }
+
+    //            yOffset = (int)sortedArrayY[2].y + y+1;
+    //            if (yOffset > buffer->height) { yOffset = buffer->height; }
+    //            if (yOffset < 0) { yOffset = 0; }
+    //            currentLine = buffer->UIBackground + xLeft + yOffset * buffer->width;
+    //            if (xRight + yOffset * buffer->width < buffer->width * buffer->height) {
+    //                for (int x = xLeft; x < xRight; x++) {
+    //                    *currentLine = color;
+    //                    currentLine++;
+    //                }
+    //            }
+
+    //        }
+    //    }
+
+    //    //second half of the triangle
+    //    if (sortedArrayY[0].y != sortedArrayY[1].y) {
+    //        vert1 = { sortedArrayY[1].x - sortedArrayY[0].x, sortedArrayY[1].y - sortedArrayY[0].y };
+    //        vert2 = { sortedArrayY[2].x - sortedArrayY[0].x, sortedArrayY[2].y - sortedArrayY[0].y };
+    //        vert1Scale = sqrt((vert1.x * vert1.x) + (vert1.y * vert1.y));
+    //        vert2Scale = sqrt((vert2.x * vert2.x) + (vert2.y * vert2.y));
+    //        vert1Norm = { vert1.x / vert1Scale,vert1.y / vert1Scale };
+    //        vert2Norm = { vert2.x / vert2Scale,vert2.y / vert2Scale };
+
+    //        if (vert1Norm.x > vert2Norm.x) {
+    //            dxLeft = vert2Norm.y / vert2Norm.x;
+    //            dxRight = vert1Norm.y / vert1Norm.x;
+
+    //        }
+    //        else if (vert1Norm.x < vert2Norm.x) {
+    //            dxRight = vert2Norm.y / vert2Norm.x;
+    //            dxLeft = vert1Norm.y / vert1Norm.x;
+
+    //        }
+
+    //        if (vert1Norm.x != vert2Norm.x) {
+    //            for (int y = 0; y < sortedArrayY[1].y - sortedArrayY[0].y+2; y++) {
+    //                xLeft = y / dxLeft + sortedArrayY[0].x-1;
+    //                xRight = y / dxRight + sortedArrayY[0].x+1;
+    //                if (xLeft > buffer->width) { xLeft = buffer->width; }
+    //                if (xRight > buffer->width) { xRight = buffer->width; }
+    //                if (xLeft < 0) { xLeft = 1; }
+    //                if (xRight < 0) { xRight = 1; }
+
+    //                if (xLeft < xMin) {
+    //                    xLeft = xMin;
+    //                }
+    //                if (xRight > xMax) {
+    //                    xRight = xMax;
+    //                }
+
+    //                yOffset = (int)sortedArrayY[0].y + y-1;
+    //                if (yOffset > buffer->height) { yOffset = buffer->height; }
+    //                if (yOffset < 0) { yOffset = 0; }
+
+
+    //                currentLine = buffer->UIBackground + xLeft + yOffset * buffer->width;
+    //                if (xRight + yOffset * buffer->width < buffer->width * buffer->height) {
+    //                    for (int x = xLeft; x < xRight; x++) {
+    //                        *currentLine = color;
+    //                        currentLine++;
+    //                    }
+    //                }
+
+    //            }
+    //        }
+
+    //    }
+    //}
+
+
+}
+
+void sortVertsY(vertex* sortedArray, vertex* array, int arraySize){
+    bool sorting = true;
+    bool swappedInCurrentIteration = false;
+    float temp;
+    for (int i = 0; i < arraySize; i++) {
+        sortedArray[i] = array[i];
+    }
+
+
+    for (int i = 0; i < arraySize - 1;i++) {
+        if (sortedArray[i].y > sortedArray[i+1].y) {
+            temp = sortedArray[i].y;
+            sortedArray[i].y = sortedArray[i + 1].y;
+            sortedArray[i + 1].y = temp;
+            temp = sortedArray[i].x;
+            sortedArray[i].x = sortedArray[i+1].x;
+            sortedArray[i + 1].x = temp;
+            swappedInCurrentIteration = true;
+        }
+        if (swappedInCurrentIteration && (i == arraySize - 2)) {
+            i = -1;
+            swappedInCurrentIteration = false;
+        }
+
+    }
+}
+
+void sortVertsX(vertex* sortedArray, vertex* array, int arraySize) {
+    bool sorting = true;
+    bool swappedInCurrentIteration = false;
+    float temp;
+    for (int i = 0; i < arraySize; i++) {
+        sortedArray[i] = array[i];
+    }
+
+
+    for (int i = 0; i < arraySize - 1; i++) {
+        if (sortedArray[i].x > sortedArray[i + 1].x) {
+            temp = sortedArray[i].y;
+            sortedArray[i].y = sortedArray[i + 1].y;
+            sortedArray[i + 1].y = temp;
+            temp = sortedArray[i].x;
+            sortedArray[i].x = sortedArray[i + 1].x;
+            sortedArray[i + 1].x = temp;
+            swappedInCurrentIteration = true;
+        }
+        if (swappedInCurrentIteration && (i == arraySize - 2)) {
+            i = -1;
+            swappedInCurrentIteration = false;
+        }
+
+    }
+}
